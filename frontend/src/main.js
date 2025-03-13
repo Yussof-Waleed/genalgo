@@ -1,198 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Genetic Route Optimizer</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    /* Ensure crisp rendering on high-DPI screens */
-    canvas {
-      transition: filter 0.3s ease;
-    }
-    .simulation-running canvas {
-      filter: drop-shadow(0 4px 6px rgba(79,70,229,0.15));
-    }
-    #finalSolutionOverlay {
-      z-index: 1000;
-    }
-  </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
-  <div class="container mx-auto px-4 py-8 max-w-6xl">
-    <!-- SETTINGS SECTION -->
-    <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-200 space-y-6">
-      <!-- Cities Settings -->
-      <div>
-        <h3 class="text-lg font-bold mb-2">Cities Settings</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Number of Sites:
-              <input type="number" id="numCities" min="3" max="100" value="25" class="mt-1 w-full px-2 py-1 border rounded">
-            </label>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Start City:
-              <select id="startCitySelect" class="mt-1 w-full px-2 py-1 border rounded" onchange="updateStartCity()">
-                <!-- Options filled dynamically -->
-              </select>
-            </label>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Final Destination:
-              <select id="finalCitySelect" class="mt-1 w-full px-2 py-1 border rounded" onchange="updateFinalCity()">
-                <!-- Options filled dynamically -->
-              </select>
-            </label>
-          </div>
-          <div class="md:col-span-3 text-sm text-gray-600">
-            <em>Hint: Double-click on a city to rename it.</em>
-          </div>
-          <div class="flex items-center">
-            <button id="randomizeBtn" onclick="randomizeCities()" class="w-full px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded">
-              Randomize Cities
-            </button>
-          </div>
-        </div>
-      </div>
-      <!-- Simulation Settings -->
-      <div>
-        <h3 class="text-lg font-bold mb-2">Simulation Settings</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Evolution Speed (ms):
-              <input type="range" id="evolutionSpeed" min="10" max="1000" step="10" value="75" class="mt-1 w-full">
-              <span id="evolutionSpeedValue">75</span> ms
-            </label>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Additional Setting:
-              <input type="text" id="simExtra" placeholder="Optional" class="mt-1 w-full px-2 py-1 border rounded">
-            </label>
-          </div>
-        </div>
-      </div>
-      <!-- Evolution Settings -->
-      <div>
-        <h3 class="text-lg font-bold mb-2">Evolution Settings</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Crossover Method:
-              <select id="crossoverMethod" class="mt-1 w-full px-2 py-1 border rounded">
-                <option value="ox">Ordered (OX)</option>
-                <option value="cycle">Cycle (CX)</option>
-                <option value="sp">Single Point (SP)</option>
-              </select>
-            </label>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Population:
-              <input type="number" id="popSize" min="10" max="1000" value="100" class="mt-1 w-full px-2 py-1 border rounded">
-            </label>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Mutation Type:
-              <select id="mutationMethod" class="mt-1 w-full px-2 py-1 border rounded">
-                <option value="swap">Swap</option>
-                <option value="inversion">Inversion</option>
-              </select>
-            </label>
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700">
-              Mutation Rate:
-              <input type="range" id="mutationRate" step="0.0001" value="0.02" class="mt-1 w-full">
-              <span id="mutationRateValue">0.02</span>
-              <em class="text-xs text-gray-600 block">Range: [1/Population, 1/Number of Cities]</em>
-            </label>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Max Generations:
-              <input type="number" id="maxGenerations" min="1" max="10000" value="100" class="mt-1 w-full px-2 py-1 border rounded">
-            </label>
-          </div>
-        </div>
-      </div>
-      <!-- Selection Settings -->
-      <div>
-        <h3 class="text-lg font-bold mb-2">Selection Settings</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Population Selection Method:
-              <select id="populationSelectionMethod" class="mt-1 w-full px-2 py-1 border rounded">
-                <option value="tournament">Tournament</option>
-                <option value="roulette">Roulette Wheel</option>
-              </select>
-            </label>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">
-              Elite Percentage (%):
-              <input type="number" id="elitePercentage" min="1" max="100" value="10" class="mt-1 w-full px-2 py-1 border rounded">
-            </label>
-          </div>
-          <div class="flex items-center">
-            <input type="checkbox" id="elitism" class="mr-2" checked>
-            <label for="elitism" class="text-sm font-medium text-gray-700">Preserve elite in next generation</label>
-          </div>
-        </div>
-      </div>
-      <!-- Start/Stop Button -->
-      <div class="text-center mt-4">
-        <button id="startBtn" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200 text-lg font-bold">
-          Start
-        </button>
-      </div>
-    </div>
-
-    <!-- SIMULATION DISPLAY SECTION -->
-    <div class="space-y-6">
-      <!-- Visualization Canvas -->
-      <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-200 relative">
-        <canvas id="canvas" class="w-full h-[600px] rounded-lg border border-gray-200 bg-gray-50"></canvas>
-        <!-- Stats Overlay -->
-        <div class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-          <div class="text-sm font-medium text-gray-700">
-            Generation: <span id="generationCount" class="text-indigo-600">0</span>
-          </div>
-          <div class="text-sm font-medium text-gray-700">
-            Best Distance: <span id="bestDistance" class="text-indigo-600">0.00</span>
-          </div>
-        </div>
-      </div>
-      <!-- Fitness Evolution Chart using Chart.js -->
-      <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
-        <canvas id="chartCanvas"></canvas>
-        <p class="text-sm text-gray-600 mt-2">Click on a point in the graph to view that generation's best route.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Final Solution Overlay -->
-  <div id="finalSolutionOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white p-6 rounded-lg shadow-lg">
-      <h2 class="text-lg font-bold mb-4">Final Solution</h2>
-      <p id="finalGeneration"></p>
-      <p id="finalDistance"></p>
-      <!-- Image to display final route -->
-      <img id="finalRouteImage" class="w-full" alt="Final Route">
-      <button onclick="closeFinalSolution()" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded">Close</button>
-    </div>
-  </div>
-
-  <script>
     // ------------------------------
     // GLOBAL VARIABLES & SETTINGS
     // ------------------------------
@@ -206,7 +11,7 @@
     let fitnessChart = null; // Chart.js instance
     let cityLabels = [];
     let startCityIndex = 0;
-    let finalCityIndex = 0; // final destination index
+    let finalCityIndex = 1; 
     let globalBest = null; // Global best chromosome
 
     // High-DPI canvas fix
@@ -233,12 +38,12 @@
           cityLabels.push("City " + (cities.length));
         }
       }
-      updateStartCitySelect();
-      updateFinalCitySelect();
+      updateStartCitySelect(cities.length);
+      updateFinalCitySelect(cities.length);
       return cities;
     }
 
-    function updateStartCitySelect() {
+    function updateStartCitySelect(numberOfCities) {
       const select = document.getElementById('startCitySelect');
       select.innerHTML = "";
       cityLabels.forEach((label, index) => {
@@ -247,10 +52,10 @@
         opt.innerText = label;
         select.appendChild(opt);
       });
-      select.value = startCityIndex;
+      select.value = Math.floor(Math.random() * numberOfCities);
     }
 
-    function updateFinalCitySelect() {
+    function updateFinalCitySelect(numberOfCities) {
       const select = document.getElementById('finalCitySelect');
       select.innerHTML = "";
       cityLabels.forEach((label, index) => {
@@ -259,7 +64,7 @@
         opt.innerText = label;
         select.appendChild(opt);
       });
-      select.value = finalCityIndex;
+      select.value = Math.floor(Math.random() * numberOfCities);
     }
 
     function updateStartCity() {
@@ -280,7 +85,7 @@
       const numCities = parseInt(document.getElementById('numCities').value);
       const mutationSlider = document.getElementById('mutationRate');
       mutationSlider.min = (1 / popSize).toFixed(4);
-      mutationSlider.max = (1 / numCities +0.1).toFixed(4);
+      mutationSlider.max = 100;
       let current = parseFloat(mutationSlider.value);
       if (current < mutationSlider.min) current = mutationSlider.min;
       if (current > mutationSlider.max) current = mutationSlider.max;
@@ -658,6 +463,3 @@
     });
     document.getElementById('startBtn').addEventListener('click', toggleSimulation);
     window.addEventListener('load', initialize);
-  </script>
-</body>
-</html>

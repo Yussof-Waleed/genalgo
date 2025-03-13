@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Genetic Route Optimizer</title>
+  <script src="./src/main.js" defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Ensure crisp rendering on high-DPI screens */
+    canvas {
+      transition: filter 0.3s ease;
+    }
+    .simulation-running canvas {
+      filter: drop-shadow(0 4px 6px rgba(79,70,229,0.15));
+    }
+    #finalSolutionOverlay {
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Navbar -->
+  <nav class="bg-indigo-600 sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="text-white font-bold text-xl">Genetic Route Optimizer</div>
+      <div class="space-x-4">
+        <a href="#description" class="text-white hover:text-gray-200">About</a>
+        <a href="#simulation" class="text-white hover:text-gray-200">Simulation</a>
+        <a href="#contact" class="text-white hover:text-gray-200">Contact</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="flex-grow container mx-auto px-4 py-8 max-w-6xl">
+    <!-- Simulation Description Section -->
+<!-- Simulation Description Section -->
+<section id="description" class="mb-8">
+  <div class="bg-white rounded-xl shadow p-6 border border-gray-200">
+    <h2 class="text-2xl font-bold mb-4">About This Simulation</h2>
+    <p class="text-gray-700 mb-2">
+      Welcome to the Genetic Route Optimizer—a state-of-the-art web application that harnesses the power of genetic algorithms to solve the Traveling Salesman Problem (TSP). This simulation mimics the process of natural evolution by iteratively selecting, crossing over, and mutating candidate solutions to discover the shortest possible route that visits all cities exactly once.
+    </p>
+    <p class="text-gray-700 mb-2">
+      <strong>Number of Sites:</strong> Set the total number of cities (or sites) that the algorithm will consider. Increasing the number of sites makes the problem more complex, leading to longer computation times but more realistic route planning scenarios.
+    </p>
+    <p class="text-gray-700 mb-2">
+      <strong>Start City:</strong> Choose the city where the route will begin. In non-cyclic scenarios, this city acts as the unique starting terminal and has only an outgoing link.
+    </p>
+    <p class="text-gray-700 mb-2">
+      <strong>Final Destination:</strong> Select a terminal city for your route. If this is different from the start city, the algorithm will generate a one-way route (i.e. the path will not loop back to the start), which can better model certain real-life journeys.
+    </p>
+    <p class="text-gray-700 mb-2">
+      <strong>Evolution Speed (ms):</strong> Adjust the speed at which each generation is processed. A lower value results in faster evolution (more generations per minute) but may be harder to follow visually.
+    </p>
+    <p class="text-gray-700 mb-2">
+      <strong>Population:</strong> This value determines the number of candidate solutions (or chromosomes) evaluated in each generation. A larger population increases the diversity of solutions but requires more computation per generation.
+    </p>
+    <p class="text-gray-700 mb-2">
+      <strong>Crossover Method:</strong> Select the method by which two candidate solutions are combined to produce offspring. For example, the Ordered Crossover (OX) preserves the relative order of cities, while Single Point (SP) crossover splits and exchanges segments.
+    </p>
+    <p class="text-gray-700 mb-2">
+      <strong>Mutation Type & Mutation Rate:</strong> Mutation introduces random alterations in candidate solutions. The mutation type (swap or inversion) determines how cities are rearranged, while the mutation rate controls how frequently mutations occur. Fine-tuning this rate is crucial; too high may destroy useful structure, too low may result in premature convergence.
+    </p>
+    <p class="text-gray-700 mb-2">
+      <strong>Max Generations:</strong> This parameter sets the maximum number of iterations the algorithm will run. A higher number allows more time for the algorithm to converge on an optimal solution, though at the cost of increased processing time.
+    </p>
+    <p class="text-gray-700 mb-2">
+      <strong>Population Selection Method & Elite Percentage:</strong> Choose how candidate solutions are selected for reproduction. For example, a Tournament selection pits a subset of candidates against each other, whereas Roulette Wheel selection gives higher chances to fitter solutions. The Elite Percentage parameter determines the top fraction of the population that is used for reproduction. If elitism is enabled, these top candidates are passed unchanged to the next generation, ensuring that high-quality solutions are preserved.
+    </p>
+    <p class="text-gray-700">
+      By carefully adjusting these parameters, you can explore a wide range of scenarios—from fast, exploratory runs to slower, more refined searches for the optimal route.
+    </p>
+  </div>
+</section>
+
+  </main>
+  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <!-- SETTINGS SECTION -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-200 space-y-6">
+      <!-- Cities Settings -->
+      <div>
+        <h3 class="text-lg font-bold mb-2">Cities Settings</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Number of Sites:
+              <input type="number" id="numCities" min="3" max="100" value="25" class="mt-1 w-full px-2 py-1 border rounded">
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Start City:
+              <select id="startCitySelect" class="mt-1 w-full px-2 py-1 border rounded" onchange="updateStartCity()">
+                <!-- Options filled dynamically -->
+              </select>
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Final Destination:
+              <select id="finalCitySelect" class="mt-1 w-full px-2 py-1 border rounded" onchange="updateFinalCity()">
+                <!-- Options filled dynamically -->
+              </select>
+            </label>
+          </div>
+          <div class="md:col-span-3 text-sm text-gray-600">
+            <em>Hint: Double-click on a city to rename it.</em>
+          </div>
+            <div class="md:col-span-3">
+            <button id="randomizeBtn" onclick="randomizeCities()" class="w-full px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded">
+              Randomize Cities
+            </button>
+            </div>
+        </div>
+      </div>
+      <!-- Simulation Settings -->
+      <div>
+        <h3 class="text-lg font-bold mb-2">Simulation Settings</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Evolution Speed (ms):
+              <input type="range" id="evolutionSpeed" min="10" max="1000" step="10" value="75" class="mt-1 w-full">
+              <span id="evolutionSpeedValue">75</span> ms
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Additional Setting:
+              <input type="text" id="simExtra" placeholder="Optional" class="mt-1 w-full px-2 py-1 border rounded">
+            </label>
+          </div>
+        </div>
+      </div>
+      <!-- Evolution Settings -->
+      <div>
+        <h3 class="text-lg font-bold mb-2">Evolution Settings</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Crossover Method:
+              <select id="crossoverMethod" class="mt-1 w-full px-2 py-1 border rounded">
+                <option value="ox">Ordered (OX)</option>
+                <option value="cycle">Cycle (CX)</option>
+                <option value="sp">Single Point (SP)</option>
+              </select>
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Population:
+              <input type="number" id="popSize" min="10" max="1000" value="100" class="mt-1 w-full px-2 py-1 border rounded">
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Mutation Type:
+              <select id="mutationMethod" class="mt-1 w-full px-2 py-1 border rounded">
+                <option value="swap">Swap</option>
+                <option value="inversion">Inversion</option>
+              </select>
+            </label>
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700">
+              Mutation Rate:
+              <input type="range" id="mutationRate" step="0.0001" value="0.02" class="mt-1 w-full">
+              <span id="mutationRateValue">0.02</span>
+              <em class="text-xs text-gray-600 block">Range: [1/Population, 1/Number of Cities]</em>
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Max Generations:
+              <input type="number" id="maxGenerations" min="1" max="10000" value="100" class="mt-1 w-full px-2 py-1 border rounded">
+            </label>
+          </div>
+        </div>
+      </div>
+      <!-- Selection Settings -->
+      <div>
+        <h3 class="text-lg font-bold mb-2">Selection Settings</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Population Selection Method:
+              <select id="populationSelectionMethod" class="mt-1 w-full px-2 py-1 border rounded">
+                <option value="tournament">Tournament</option>
+                <option value="roulette">Roulette Wheel</option>
+              </select>
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Elite Percentage (%):
+              <input type="number" id="elitePercentage" min="1" max="100" value="10" class="mt-1 w-full px-2 py-1 border rounded">
+            </label>
+          </div>
+          <div class="flex items-center">
+            <input type="checkbox" id="elitism" class="mr-2" checked>
+            <label for="elitism" class="text-sm font-medium text-gray-700">Preserve elite in next generation</label>
+          </div>
+        </div>
+      </div>
+      <!-- Start/Stop Button -->
+      <div class="text-center mt-4">
+        <button id="startBtn" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200 text-lg font-bold">
+          Start
+        </button>
+      </div>
+    </div>
+
+    <!-- SIMULATION DISPLAY SECTION -->
+    <div class="space-y-6">
+      <!-- Visualization Canvas -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-200 relative">
+        <canvas id="canvas" class="w-full h-[600px] rounded-lg border border-gray-200 bg-gray-50"></canvas>
+        <!-- Stats Overlay -->
+        <div class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+          <div class="text-sm font-medium text-gray-700">
+            Generation: <span id="generationCount" class="text-indigo-600">0</span>
+          </div>
+          <div class="text-sm font-medium text-gray-700">
+            Best Distance: <span id="bestDistance" class="text-indigo-600">0.00</span>
+          </div>
+        </div>
+      </div>
+      <!-- Fitness Evolution Chart using Chart.js -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+        <canvas id="chartCanvas"></canvas>
+        <p class="text-sm text-gray-600 mt-2">Click on a point in the graph to view that generation's best route.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final Solution Overlay -->
+  <div id="finalSolutionOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+      <h2 class="text-lg font-bold mb-4">Final Solution</h2>
+      <p id="finalGeneration"></p>
+      <p id="finalDistance"></p>
+      <!-- Image to display final route -->
+      <img id="finalRouteImage" class="w-full" alt="Final Route">
+      <button onclick="closeFinalSolution()" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded">Close</button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer id="contact" class="bg-gray-800 text-white py-4 mt-8">
+    <div class="container mx-auto px-4 text-center">
+      <p>&copy; 2025 Yussof Waleed. All rights reserved.</p>
+      <p>Contact us: <a href="mailto:yussofwaleed@gmail.com" class="text-indigo-400 hover:text-indigo-300">yussofwaleed@gmail.com</a></p>
+    </div>
+  </footer>
+  
+</body>
+</html>
